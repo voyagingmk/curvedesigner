@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+    <head>
+    	<script type="text/javascript" src="zebra.js">
+        </script>
+        <script src='uiengine.custom.js' type='text/javascript'></script>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0" />
+        <meta name="msapplication-tap-highlight" content="no" />
+    </head>
+    <body align="center" style="padding:15px;">
+    </body>
+<script type="text/javascript">
+zebra.ready(function() {
+	// import all classes, functions, constants
+	// from zebra.ui, zebra.layout packages
+	eval(zebra.Import("ui", "layout", "ui.custom"));
+	g_DrawRoot = (new zCanvas(400, 400)).root;
+
+	g_DrawRoot.properties({
+		layout: new zebra.layout.StackLayout(),
+		padding: 0,
+		background: "white",
+		kids: {
+			TOP   : new MyDrawBoard(),
+		}
+	});
+	g_CtrlRoot = (new zCanvas(416, 416)).root;
+
+	g_CtrlRoot.properties({
+		layout: new zebra.layout.StackLayout(),
+		padding: 8,
+		background: "white",
+		kids: {
+			BOTTOM: new MyLayout(),
+		}
+	});
+
+			
+});
+</script>
+</html>
