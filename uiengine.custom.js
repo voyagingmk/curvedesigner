@@ -133,6 +133,8 @@ pkg.BSpline = Class(Panel, [
             return;
         g.beginPath();
         g.setColor(this.color);
+        if (this.highlight)
+            g.setColor("rgba(255,10,10,1)");
         var prev = g.lineWidth;
         g.lineWidth = this.lineWidth;
         g.moveTo(this.gx[1], this.gy[1]);
@@ -140,17 +142,6 @@ pkg.BSpline = Class(Panel, [
             g.lineTo(this.gx[i], this.gy[i]);
         }
         g.stroke();
-
-        if (this.highlight) {
-            g.lineWidth = this.lineWidth*3;
-            g.beginPath();
-            g.setColor("rgba(255,10,10, 0.3)");
-            g.moveTo(this.gx[1], this.gy[1]);
-            for(var i = 1; i < this.gx.length; i++) {
-                g.lineTo(this.gx[i], this.gy[i]);
-            }
-            g.stroke();
-        }
 
         g.lineWidth = prev;
     }
@@ -291,26 +282,30 @@ function() {
                     self.m_Points.splice(self.m_Points.indexOf(this.selected), 1);
                     self.remove(this.selected);
                     self.refreshSpline();
-                }else{
+                }
+                /*else{
                     var px = this.selected.px, py = this.selected.py;
                     if(px && py){
                         var sl = g_Ctrl.find("//zebra.ui.Panel[@id='Slider']");
                         sl.m_TargetPoint = this.selected;
                         sl.setValue(sl.max*px/400);
-                    }
-                }
+                    }*/
             }
             return true;
         },
         function mouseMoved(e) {
-            this.checkSelect(e);
+            this.checkSelect(e, false);
+            if(this.draged){
+                this.draged.px = e.x;
+                this.draged.py = e.y;
+                g_DrawBoard.refreshSpline();
+            }
             return true;
         },
         function checkSelect(e){
             for(var i=0; i<this.parent.kids.length-1; i++) {
                 var kid = this.parent.kids[i];
                     j   = kid.isInside(e.x, e.y);
-                
                 if (j >= 0) {
                     kid.setHighlight(true);
                     this.selected = kid;
@@ -322,14 +317,22 @@ function() {
                     if (kid.highlight) kid.setHighlight(false);     
                 }
             }
+            return this.selected;
         },
         function mouseDragStarted(e) {
-            this.checkSelect(e);
+            this.draged = this.checkSelect(e);
             this.dx = e.x;
             this.dy = e.y;
         },
-
+        function mouseDragEnded(e) {
+            this.draged = null;
+        },
         function mouseDragged(e) {
+            if(this.draged){
+                this.draged.px = e.x;
+                this.draged.py = e.y;
+                g_DrawBoard.refreshSpline();
+            }
             if (this.selected&&this.selected.gx) {
                 for (var i=0; i < this.selected.gx.length; i++) {
                     this.selected.gx[i] += (e.x - this.dx); 
