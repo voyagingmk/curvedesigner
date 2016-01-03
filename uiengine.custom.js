@@ -105,9 +105,12 @@ pkg.BSpline = Class(Panel, [
         this.gy = [ top ];
         if(this.cpoints.length<3)
             return;
-        this.knots = new Array(cpoints.length + this.order);
-        for(var i = 0; i < this.knots.length; i++) {
-            this.knots[i] = i;
+        if(!this.knots || (this.knots.length != cpoints.length+this.order))
+        {
+            this.knots = new Array(cpoints.length + this.order);
+            for(var i = 0; i < this.knots.length; i++) {
+                this.knots[i] = i;
+            }
         }
         if(knots){
             for(var i = 0; i <  this.knots.length; i++) {
@@ -117,7 +120,6 @@ pkg.BSpline = Class(Panel, [
         }
         if(updateknot == null || updateknot)
             g_Ctrl.updateKnots(this.knots);
-        console.log("len",this.knots.length, this.knots);
         for(var t = this.t1, i = 1; t <= this.t2; t += this.dt, i++) {
             var point = bspline(t, this.order, this.cpoints, this.knots);
            // console.log(point);
@@ -285,8 +287,6 @@ function() {
             this.checkSelect(e);
         },
         function mouseReleased(e,g){
-            console.log("e:",e,g);
-
             if(!this.selected){
                 var pointObj = new pkg.MySimplePoint(e.x,e.y, "#ff0000");
                 self.insert(0, CENTER, pointObj);
@@ -419,8 +419,8 @@ pkg.MyLayout = new Class(pkg.MyPan, [
                 this.$super(e);
                 var num = parseFloat(e.source.getValue());
                 if(isNaN(num))
-                    return true;
-                return true;
+                    return;
+                 self.onKnotUpdated();
             },
             function mouseClicked(e) { 
                 console.log(e.source.getValue()); 
