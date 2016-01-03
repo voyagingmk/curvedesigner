@@ -77,6 +77,85 @@ pkg.MySimplePoint = Class(Panel, [
     }
 ]);
 
+
+pkg.BSpline = Class(Panel, [
+    function(cpoints, order, t1, t2, dt, col) {
+        this.cpoints = cpoints;
+        this.order = order;
+        this.t1 = t1;
+        this.t2 = t2;
+        this.dt = dt;
+        this.color = col;
+        this.lineWidth = 4;
+        this.$super();
+        this.setPadding(0);
+        this.refreshSpline();
+        this.id='BSpline';
+    },
+
+    function refreshSpline(cpoints) {
+        if(cpoints)
+            this.cpoints = cpoints;
+        var left = this.getLeft() + this.lineWidth, top = this.getTop() + this.lineWidth;
+        this.gx = [ left ];
+        this.gy = [ top ];
+       console.log("cpoints", this.cpoints);
+        if(this.cpoints.length<3)
+            return;
+        console.log(this.width, this.height);
+        for(var t = this.t1, i = 1; t <= this.t2; t += this.dt, i++) {
+            var point = bspline(t, this.order, this.cpoints);
+           // console.log(point);
+            this.gx[i] = left + point[0]*400;
+            this.gy[i] = top + point[1]*400;
+        }
+       // console.log(this.gx, this.gy);
+    },
+
+    function isInside(x, y) {
+        for(var i = 0; i < this.gx.length; i++) {
+            var rx = this.gx[i], ry = this.gy[i];
+            if ((ry - y) * (ry - y) + (rx - x) * (rx - x) < 4 * this.lineWidth * this.lineWidth) {
+                return i;
+            }
+        }
+        return -1;
+    },
+    function setHighlight(b) {
+        this.highlight = b;
+        this.repaint();
+    },
+
+    function paint(g) {
+        if(this.cpoints.length < 3)
+            return;
+        console.log("chart paint")
+        g.beginPath();
+        g.setColor(this.color);
+        var prev = g.lineWidth;
+        g.lineWidth = this.lineWidth;
+        //console.log(this.gx,this.gy);
+        g.moveTo(this.gx[1], this.gy[1]);
+        for(var i = 2; i < this.gx.length; i++) {
+            g.lineTo(this.gx[i], this.gy[i]);
+        }
+        g.stroke();
+
+        if (this.highlight) {
+            g.lineWidth = this.lineWidth*3;
+            g.beginPath();
+            g.setColor("rgba(255,10,10, 0.3)");
+            g.moveTo(this.gx[0], this.gy[0]);
+            for(var i = 1; i < this.gx.length; i++) {
+                g.lineTo(this.gx[i], this.gy[i]);
+            }
+            g.stroke();
+        }
+
+        g.lineWidth = prev;
+    }
+]);
+
 pkg.MySimpleChart = Class(Panel, [
     function(f, x1, x2, dx, col) {
         this.f = f;
@@ -90,6 +169,7 @@ pkg.MySimpleChart = Class(Panel, [
     },
 
     function validate() {
+        //console.log('validate')
         var b = this.isLayoutValid;
         this.$super();
         if (b) return;
@@ -139,7 +219,7 @@ pkg.MySimpleChart = Class(Panel, [
         g.setColor(this.color);
         var prev = g.lineWidth;
         g.lineWidth = this.lineWidth;
-        //console.log(this.gx,this.gy);
+        //console.log(this.gx[0],this.gy[0]);
         g.moveTo(this.gx[0], this.gy[0]);
         for(var i = 1; i < this.gx.length; i++) {
             g.lineTo(this.gx[i], this.gy[i]);
@@ -189,6 +269,7 @@ function() {
     this.id = 'DrawBoard';
     this.background = "white"; 
     this.add(CENTER, new pkg.MySimpleChart(function(x) { return -x*Math.sin(x); }, 0, 3.14/2, 0.01, "#33ddCC"));
+    this.add(CENTER, new pkg.BSpline([],3,0,1,0.01,"#33ddCC"));
         //new MySimpleChart(function(x) { return Math.sin(x); }, -3, 3, 0.01, "#11FF99"),
         //new MySimpleChart(function(x) { return Math.cos(x)*Math.sin(x) - 2 * Math.sin(x*x); }, -2, 3, 0.01, "#CCFF77"),
     this.add(CENTER, new pkg.MyGrid({
@@ -202,6 +283,12 @@ function() {
                 var pointObj = new pkg.MySimplePoint(e.x,e.y, "#ff0000");
                 self.insert(0, CENTER, pointObj);
                 self.m_Points.push(pointObj);
+                var cpoints = [];
+                for(var i = 0; i < self.m_Points.length;i++){
+                    var p = self.m_Points[i];
+                    cpoints.push([p.px/400,p.py/400]); 
+                }
+                g_DrawBoard.find("//zebra.ui.Panel[@id='BSpline']").refreshSpline(cpoints);
             }
             return true;
         },
@@ -272,7 +359,7 @@ pkg.MyLayout = new Class(pkg.MyPan, [
         var btn = new Button("Clean Control Points");
         bl_p.add(TOP, btn);
         btn.bind(function() {
-            g_DrawRoot.find("//zebra.ui.Panel[@id='DrawBoard']").cleanControlPoints();
+            g_DrawBoard.cleanControlPoints();
         });
         bl_p.add(BOTTOM, new Button("BOTTOM"));
         bl_p.add(RIGHT, new Button("RIGHT"));
