@@ -52,10 +52,6 @@ function bspline(t, order, points, knots, weights, result) {
     v[i][d] = weights[i];
   }
 
-
-  //console.log(v);
-  //console.log(knots);
-
   // l (level) goes from 1 to the curve order
   for(var l=1; l<=order; l++) {
     // build level l of the pyramid
