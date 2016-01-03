@@ -105,8 +105,13 @@ pkg.BSpline = Class(Panel, [
         this.gy = [ top ];
         if(this.cpoints.length<3)
             return;
+        var knots = new Array(cpoints.length + this.order);
+        for(var i = 0; i < knots.length; i++) {
+            knots[i] = i;
+        }
+        g_Ctrl.updateKnots(knots);
         for(var t = this.t1, i = 1; t <= this.t2; t += this.dt, i++) {
-            var point = bspline(t, this.order, this.cpoints);
+            var point = bspline(t, this.order, this.cpoints, knots);
            // console.log(point);
             this.gx[i] = left + point[0]*400;
             this.gy[i] = top + point[1]*400;
@@ -268,6 +273,9 @@ function() {
     var self = this;
     self.m_Points = [];
     this.add(CENTER, new Panel([
+        function mousePressed(e,g){
+            this.checkSelect(e);
+        },
         function mouseReleased(e,g){
             console.log("e:",e,g);
 
@@ -299,6 +307,7 @@ function() {
                 this.draged.px = e.x;
                 this.draged.py = e.y;
                 g_DrawBoard.refreshSpline();
+                g_Ctrl.updatePos(this.draged.px, this.draged.py);
             }
             return true;
         },
@@ -309,6 +318,8 @@ function() {
                 if (j >= 0) {
                     kid.setHighlight(true);
                     this.selected = kid;
+                    if(this.selected.px)
+                        g_Ctrl.updatePos(this.selected.px, this.selected.py);
                     this.index = j;
                     break;
                 }
@@ -321,27 +332,26 @@ function() {
         },
         function mouseDragStarted(e) {
             this.draged = this.checkSelect(e);
-            this.dx = e.x;
-            this.dy = e.y;
         },
         function mouseDragEnded(e) {
             this.draged = null;
         },
         function mouseDragged(e) {
+            var x = e.x, y = e.y;
+            if(x < 0)
+                x = 0;
+            if(x > 400)
+                x = 400;
+            if(y < 0)
+                y = 0;
+            if(y > 400)
+                y = 400;   
             if(this.draged){
-                this.draged.px = e.x;
-                this.draged.py = e.y;
+                this.draged.px = x;
+                this.draged.py = y;
                 g_DrawBoard.refreshSpline();
+                g_Ctrl.updatePos(this.draged.px, this.draged.py);
             }
-            if (this.selected&&this.selected.gx) {
-                for (var i=0; i < this.selected.gx.length; i++) {
-                    this.selected.gx[i] += (e.x - this.dx); 
-                    this.selected.gy[i] += (e.y - this.dy); 
-                }
-                this.selected.repaint();
-            }
-            this.dx = e.x;
-            this.dy = e.y;
         }
     ]));
 },
@@ -369,7 +379,8 @@ pkg.MyLayout = new Class(pkg.MyPan, [
         g_Ctrl = this;
         this.setLayout(new BorderLayout());
         this.add(CENTER, this.borderLayoutPage());
-        this.add(BOTTOM, this.createTextFieldPan());
+        this.add(BOTTOM, this.createParamPan1());
+        this.add(BOTTOM, this.createParamPan2());
         var ch = new Checkbox("grid");
 
         ch.setValue(true);
@@ -405,9 +416,42 @@ pkg.MyLayout = new Class(pkg.MyPan, [
         bl.add(TOP, sl);
         return bl;
     },
-    function createTextFieldPan() {
-        var p = new Panel(new GridLayout(3, 2));
-         var ctr = new Constraints();
+    function createParamPan1() {
+        var p = new Panel(new GridLayout(100, 4));
+        var ctr = new Constraints();
+        ctr.ay = CENTER;
+        ctr.setPadding(2);
+
+        for(var i = 0; i < 50;i++){
+            tf = new TextField(new zebra.data.SingleLineTxt("0", 5),[
+                function keyTyped(e) { 
+                    this.$super(e);
+                    if(e.code < 49 || e.code > 57){
+                        return;
+                    }
+                }
+            ]);
+            tf.setPreferredSize(100, -1);
+            tf.id = "knot"+i;
+            var label = new BoldLabel("knot"+i);
+            p.add(ctr, label);
+            label.setVisible(false); 
+            p.add(ctr, tf); 
+            tf.setVisible(false); 
+        }
+        return pkg.createBorderPan("Knots", p);
+    },
+    function updateKnots(knots){
+        for(var i = 0; i < knots.length;i++){
+            var val = knots[i];
+            var tf = this.find("//zebra.ui.TextField[@id='knot"+i+"']");
+            tf.setVisible(true);
+            tf.setValue(val.toString());
+        }
+    },
+    function createParamPan2() {
+        var p = new Panel(new GridLayout(5, 2));
+        var ctr = new Constraints();
         ctr.ay = CENTER;
         ctr.setPadding(2);
         
@@ -425,6 +469,78 @@ pkg.MyLayout = new Class(pkg.MyPan, [
         p.add(ctr, new BoldLabel("Order:"));
         p.add(ctr, tf);
 
+
+        tf = new TextField(new zebra.data.SingleLineTxt("0", 3),[
+            function keyTyped(e) { 
+                this.$super(e);
+                if(e.code < 49 || e.code > 57){
+                    this.setValue(this.m_OldValue);
+                    return;
+                }
+                this.m_OldValue = this.getValue();
+            }
+        ]);
+        tf.setPreferredSize(100, -1);
+        tf.setHint(":x");
+        tf.id = "PosX";
+        //tf.bind(this.onPosChanged.bind(this));
+
+        p.add(ctr, new BoldLabel("pos.x"));
+        p.add(ctr, tf);  
+
+        tf = new TextField(new zebra.data.SingleLineTxt("0", 3),[
+            function keyTyped(e) { 
+                this.$super(e);
+                if(e.code < 49 || e.code > 57){
+                    this.setValue(this.m_OldValue);
+                    return;
+                }
+                this.m_OldValue = this.getValue();
+            }
+        ]);
+        tf.setPreferredSize(100, -1);
+        tf.setHint(":y");
+        tf.id = "PosY";
+       // tf.bind(this.onPosChanged.bind(this));
+        
+        p.add(ctr, new BoldLabel("pos.y"));
+        p.add(ctr, tf); 
+
+        tf = new TextField(new zebra.data.SingleLineTxt("0", 5),[
+            function keyTyped(e) { 
+                this.$super(e);
+                if(e.code < 49 || e.code > 57){
+                    this.setValue(this.m_OldValue);
+                    return;
+                }
+                this.m_OldValue = this.getValue();
+            }
+        ]);
+        tf.setPreferredSize(100, -1);
+        tf.setHint(":x%");
+        tf.id = "PerX";
+        //tf.bind(this.onPosChanged.bind(this));
+
+        p.add(ctr, new BoldLabel("per.x"));
+        p.add(ctr, tf);  
+
+        tf = new TextField(new zebra.data.SingleLineTxt("0", 5),[
+            function keyTyped(e) { 
+                this.$super(e);
+                if(e.code < 49 || e.code > 57){
+                    this.setValue(this.m_OldValue);
+                    return;
+                }
+                this.m_OldValue = this.getValue();
+            }
+        ]);
+        tf.setPreferredSize(100, -1);
+        tf.setHint(":y%");
+        tf.id = "PerY";
+       // tf.bind(this.onPosChanged.bind(this));
+        
+        p.add(ctr, new BoldLabel("per.y"));
+        p.add(ctr, tf); 
 /*
         tf = new TextField(new zebra.data.SingleLineTxt("dsd", 5));
         tf.setPreferredSize(150, -1);
@@ -437,6 +553,15 @@ pkg.MyLayout = new Class(pkg.MyPan, [
         p.add(ctr, tf);
 */
         return pkg.createBorderPan("Parameters", p);
+    },
+    function updatePos(x, y){
+         this.find("//zebra.ui.TextField[@id='PosX']").setValue(x.toString());
+         this.find("//zebra.ui.TextField[@id='PosY']").setValue(y.toString());
+         this.find("//zebra.ui.TextField[@id='PerX']").setValue((x/400).toString());
+         this.find("//zebra.ui.TextField[@id='PerY']").setValue((y/400).toString());
+    },
+    function onPosChanged(x, y){
+
     }
 ]);
 

@@ -15,6 +15,16 @@ zebra.ready(function() {
 	// import all classes, functions, constants
 	// from zebra.ui, zebra.layout packages
 	eval(zebra.Import("ui", "layout", "ui.custom"));
+
+	g_CtrlRoot = (new zCanvas(416, 800)).root;
+	g_CtrlRoot.properties({
+		layout: new zebra.layout.StackLayout(),
+		padding: 8,
+		background: "white",
+		kids: {
+			CENTER: new MyLayout(),
+		}
+	});
 	g_DrawRoot = (new zCanvas(400, 400)).root;
 
 	g_DrawRoot.properties({
@@ -26,30 +36,6 @@ zebra.ready(function() {
 		}
 	});
 	g_DrawBoard = g_DrawRoot.find("//zebra.ui.Panel[@id='DrawBoard']");
-
-	g_CtrlRoot = (new zCanvas(416, 416)).root;
-
-	g_CtrlRoot.properties({
-		layout: new zebra.layout.StackLayout(),
-		padding: 8,
-		background: "white",
-		kids: {
-			CENTER: new MyLayout(),
-		}
-	});
-
-	var MyListenerContainerClass = zebra.util.ListenersClass("mouseReleased"); 
-
-   // instantiate listener class container
-   var listener = new MyListenerContainerClass();
-
-   // add "event1" listener 
-   listener.add(function mouseReleased() {
- 		g_DrawBoard.add(CENTER, new MySimpleChart(function(x) { return -x*Math.sin(2*x); }, 0, 3.14/2, 0.01, "#33ddCC"));
-        g_DrawBoard.repaint();
-   });
-
-   g_Listener = listener;
 
 			
 });
