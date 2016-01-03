@@ -5,6 +5,7 @@ eval(zebra.Import("ui", "layout", "util"));
 
 pkg.borderColor = "#FFFFFF";
 pkg.borderSize = 0;
+
 pkg.MyGrid = Class(Panel, [
     function(option) {
         this.option = option;
@@ -39,6 +40,40 @@ pkg.MyGrid = Class(Panel, [
         }
         g.stroke();
         g.lineWidth = prev;
+    }
+]);
+
+pkg.MySimplePoint = Class(Panel, [
+    function(x,y,col) {
+        this.px = x;
+        this.py = y;
+        this.pw = 4;
+        this.ph = 4;
+        this.color = col;
+        this.$super();
+        this.setPadding(8);
+    },
+    function validate() {
+        var b = this.isLayoutValid;
+        this.$super();
+        if (b) return;
+    },
+    function isInside(x, y) {
+       if ((this.py - y) * (this.py - y) + (this.px - x) * (this.px - x) < 4 * this.lineWidth * this.lineWidth) {
+            return 1;
+        }
+        return -1;
+    },
+
+    function setHighlight(b) {
+        this.highlight = b;
+        this.repaint();
+    },
+
+    function paint(g) {        
+        g.setColor(this.color);
+        console.log("this",this.px, this.py); 
+        g.fillRect(this.px-this.pw*0.5, this.py-this.ph*0.5,this.pw,this.ph);
     }
 ]);
 
@@ -99,6 +134,7 @@ pkg.MySimpleChart = Class(Panel, [
     },
 
     function paint(g) {
+        console.log("chart paint")
         g.beginPath();
         g.setColor(this.color);
         var prev = g.lineWidth;
@@ -144,8 +180,8 @@ pkg.createBorderPan = function (txt, content, w, h) {
     return bp;
 };
 
-pkg.MyDrawBoard = new Class(pkg.MyPan, [
-    function() {
+pkg.MyDrawBoard = new Class(ViewPan, [
+function() {
     this.$super();
     this.setLayout(new zebra.layout.StackLayout());
     this.height = 400;
@@ -157,8 +193,22 @@ pkg.MyDrawBoard = new Class(pkg.MyPan, [
     this.add(CENTER, new pkg.MyGrid({
             margin:20,
         }));
+    var self = this;
     this.add(CENTER, new Panel([
+
+            function mouseReleased(e){
+                if(!this.selected){
+                  self.insert(0, CENTER, new pkg.MySimplePoint(e.x,e.y, "#ff0000"));
+                }
+                
+                return true;
+
+            },
             function mouseMoved(e) {
+                this.checkSelect(e);
+                return true;
+            },
+            function checkSelect(e){
                 for(var i=0; i<this.parent.kids.length-1; i++) {
                     var kid = this.parent.kids[i];
                         j   = kid.isInside(e.x, e.y);
@@ -174,10 +224,9 @@ pkg.MyDrawBoard = new Class(pkg.MyPan, [
                         if (kid.highlight) kid.setHighlight(false);     
                     }
                 }
-                
             },
-
             function mouseDragStarted(e) {
+                this.checkSelect(e);
                 this.dx = e.x;
                 this.dy = e.y;
             },
@@ -195,7 +244,7 @@ pkg.MyDrawBoard = new Class(pkg.MyPan, [
             }
 
         ]));
-    }]);
+}]);
 
 pkg.MyLayout = new Class(pkg.MyPan, [
     function() {

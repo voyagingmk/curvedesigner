@@ -21,7 +21,7 @@ zebra.ready(function() {
 		padding: 0,
 		background: "white",
 		kids: {
-			TOP   : new MyDrawBoard(),
+			CENTER   : new MyDrawBoard(),
 		}
 	});
 	g_CtrlRoot = (new zCanvas(416, 416)).root;
@@ -31,9 +31,22 @@ zebra.ready(function() {
 		padding: 8,
 		background: "white",
 		kids: {
-			BOTTOM: new MyLayout(),
+			CENTER: new MyLayout(),
 		}
 	});
+
+	var MyListenerContainerClass = zebra.util.ListenersClass("mouseReleased"); 
+
+   // instantiate listener class container
+   var listener = new MyListenerContainerClass();
+
+   // add "event1" listener 
+   listener.add(function mouseReleased() {
+ 		g_DrawBoard.add(CENTER, new MySimpleChart(function(x) { return -x*Math.sin(2*x); }, 0, 3.14/2, 0.01, "#33ddCC"));
+        g_DrawBoard.repaint();
+   });
+
+   g_Listener = listener;
 
 			
 });
