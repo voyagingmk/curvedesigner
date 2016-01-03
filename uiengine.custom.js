@@ -59,7 +59,7 @@ pkg.MySimplePoint = Class(Panel, [
         if (b) return;
     },
     function isInside(x, y) {
-       if ((this.py - y) * (this.py - y) + (this.px - x) * (this.px - x) < 4 * this.lineWidth * this.lineWidth) {
+       if ((this.py - y) * (this.py - y) + (this.px - x) * (this.px - x) < 40) {
             return 1;
         }
         return -1;
@@ -73,6 +73,11 @@ pkg.MySimplePoint = Class(Panel, [
     function paint(g) {        
         g.setColor(this.color);
         g.fillRect(this.px-this.pw*0.5, this.py-this.ph*0.5,this.pw,this.ph);
+        if (this.highlight) {
+            g.setColor("rgba(255,10,10, 0.3)");
+            g.fillRect(this.px-this.pw*2, this.py-this.ph*2,this.pw*4,this.ph*4);
+        }
+
     }
 ]);
 
@@ -272,17 +277,29 @@ function() {
     var self = this;
     self.m_Points = [];
     this.add(CENTER, new Panel([
-        function mouseReleased(e){
+        function mouseReleased(e,g){
+            console.log("e:",e,g);
+
             if(!this.selected){
                 var pointObj = new pkg.MySimplePoint(e.x,e.y, "#ff0000");
                 self.insert(0, CENTER, pointObj);
                 self.m_Points.push(pointObj);
-                var cpoints = [];
-                for(var i = 0; i < self.m_Points.length;i++){
-                    var p = self.m_Points[i];
-                    cpoints.push([p.px/400,p.py/400]); 
+                pointObj.m_Idx = self.m_Points.length - 1;
+                self.refreshSpline();
+            }
+            else{
+                if(e.modifiers.ctrlKey){
+                    self.m_Points.splice(this.selected.m_Idx, 1);
+                    self.refreshSpline();
+                    self.remove(this.selected);
+                }else{
+                    var px = this.selected.px, py = this.selected.py;
+                    if(px && py){
+                        var sl = g_Ctrl.find("//zebra.ui.Panel[@id='Slider']");
+                        sl.m_TargetPoint = this.selected;
+                        sl.setValue(sl.max*px/400);
+                    }
                 }
-                g_DrawBoard.find("//zebra.ui.Panel[@id='BSpline']").refreshSpline(cpoints);
             }
             return true;
         },
@@ -314,7 +331,7 @@ function() {
         },
 
         function mouseDragged(e) {
-            if (this.selected) {
+            if (this.selected&&this.selected.gx) {
                 for (var i=0; i < this.selected.gx.length; i++) {
                     this.selected.gx[i] += (e.x - this.dx); 
                     this.selected.gy[i] += (e.y - this.dy); 
@@ -326,21 +343,33 @@ function() {
         }
     ]));
 },
+function refreshSpline(){
+    var cpoints = [];
+    for(var i = 0; i < this.m_Points.length;i++){
+        var p = this.m_Points[i];
+        cpoints.push([p.px/400,p.py/400]); 
+    }
+    g_DrawBoard.find("//zebra.ui.Panel[@id='BSpline']").refreshSpline(cpoints);
+    g_DrawBoard.repaint();
+},
 function cleanControlPoints(){
     for(var i =0; i < this.m_Points.length;i++){
         var p = this.m_Points[i];
         this.remove(p);
     }
     this.m_Points = [];
+    g_DrawBoard.find("//zebra.ui.Panel[@id='BSpline']").refreshSpline(this.m_Points);
 }]);
 
 pkg.MyLayout = new Class(pkg.MyPan, [
     function() {
         this.$super();
+        g_Ctrl = this;
         this.setLayout(new BorderLayout());
         this.add(CENTER, this.borderLayoutPage());
         this.add(BOTTOM, this.createTextFieldPan());
         var ch = new Checkbox("grid");
+
         ch.setValue(true);
         this.add(BOTTOM, ch);
         ch.manager.bind(function(t) {
@@ -348,18 +377,31 @@ pkg.MyLayout = new Class(pkg.MyPan, [
         });
     },
     function borderLayoutPage() {
-        var bl_p = new Panel(new BorderLayout(2,2));
-        bl_p.setPadding(4);
+        var bl = new Panel(new BorderLayout(2,2));
+        bl.setPadding(4);
         var btn = new Button("Clean Control Points");
-        bl_p.add(TOP, btn);
+        bl.add(TOP, btn);
         btn.bind(function() {
             g_DrawBoard.cleanControlPoints();
         });
-        bl_p.add(BOTTOM, new Button("BOTTOM"));
-        bl_p.add(RIGHT, new Button("RIGHT"));
-        bl_p.add(LEFT, new Button("LEFT"));
-        bl_p.add(CENTER, new Button("CENTER"));
-        return bl_p;
+        var sl = new Slider();
+        sl.setPreferredSize(400, -1);
+        sl.id = "Slider";
+        sl.setPadding = 0;
+        var intervals = [];
+        for(var i =0; i < 8;i++)
+            intervals.push(50);
+        sl.setValues(0,400,intervals,1,1);
+        sl.bind(function(e) {
+            var pointObj = sl.m_TargetPoint;
+            if(pointObj){
+                pointObj.px = e.value;
+               g_DrawBoard.refreshSpline();
+
+            }
+        });
+        bl.add(TOP, sl);
+        return bl;
     },
     function createTextFieldPan() {
         var p = new Panel(new GridLayout(3, 2));
