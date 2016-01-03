@@ -97,7 +97,7 @@ pkg.BSpline = Class(Panel, [
         this.id='BSpline';
     },
 
-    function refreshSpline(cpoints) {
+    function refreshSpline(cpoints, knots, updateknot) {
         if(cpoints)
             this.cpoints = cpoints;
         var left = this.getLeft() + this.lineWidth, top = this.getTop() + this.lineWidth;
@@ -105,13 +105,21 @@ pkg.BSpline = Class(Panel, [
         this.gy = [ top ];
         if(this.cpoints.length<3)
             return;
-        var knots = new Array(cpoints.length + this.order);
-        for(var i = 0; i < knots.length; i++) {
-            knots[i] = i;
+        this.knots = new Array(cpoints.length + this.order);
+        for(var i = 0; i < this.knots.length; i++) {
+            this.knots[i] = i;
         }
-        g_Ctrl.updateKnots(knots);
+        if(knots){
+            for(var i = 0; i <  this.knots.length; i++) {
+                if(!isNaN(knots[i]))
+                    this.knots[i] = knots[i];
+            }
+        }
+        if(updateknot == null || updateknot)
+            g_Ctrl.updateKnots(this.knots);
+        console.log("len",this.knots.length, this.knots);
         for(var t = this.t1, i = 1; t <= this.t2; t += this.dt, i++) {
-            var point = bspline(t, this.order, this.cpoints, knots);
+            var point = bspline(t, this.order, this.cpoints, this.knots);
            // console.log(point);
             this.gx[i] = left + point[0]*400;
             this.gy[i] = top + point[1]*400;
@@ -355,13 +363,14 @@ function() {
         }
     ]));
 },
-function refreshSpline(){
+function refreshSpline(option){
+    if(!option) option = {};
     var cpoints = [];
     for(var i = 0; i < this.m_Points.length;i++){
         var p = this.m_Points[i];
         cpoints.push([p.px/400,p.py/400]); 
     }
-    g_DrawBoard.find("//zebra.ui.Panel[@id='BSpline']").refreshSpline(cpoints);
+    g_DrawBoard.find("//zebra.ui.Panel[@id='BSpline']").refreshSpline(cpoints, option.knots, option.updateknot);
     g_DrawBoard.repaint();
 },
 function cleanControlPoints(){
@@ -370,7 +379,7 @@ function cleanControlPoints(){
         this.remove(p);
     }
     this.m_Points = [];
-    g_DrawBoard.find("//zebra.ui.Panel[@id='BSpline']").refreshSpline(this.m_Points);
+    this.refreshSpline();
 }]);
 
 pkg.MyLayout = new Class(pkg.MyPan, [
@@ -397,49 +406,75 @@ pkg.MyLayout = new Class(pkg.MyPan, [
         btn.bind(function() {
             g_DrawBoard.cleanControlPoints();
         });
-        var sl = new Slider();
-        sl.setPreferredSize(400, -1);
-        sl.id = "Slider";
-        sl.setPadding = 0;
-        var intervals = [];
-        for(var i =0; i < 8;i++)
-            intervals.push(50);
-        sl.setValues(0,400,intervals,1,1);
-        sl.bind(function(e) {
-            var pointObj = sl.m_TargetPoint;
-            if(pointObj){
-                pointObj.px = e.value;
-               g_DrawBoard.refreshSpline();
-
-            }
-        });
-        bl.add(TOP, sl);
         return bl;
     },
     function createParamPan1() {
-        var p = new Panel(new GridLayout(100, 4));
+        var p = new Panel(new GridLayout(100, 2));
         var ctr = new Constraints();
         ctr.ay = CENTER;
         ctr.setPadding(2);
-
+        var self = this;
+        var callback = [
+            function keyTyped(e) { 
+                this.$super(e);
+                var num = parseFloat(e.source.getValue());
+                if(isNaN(num))
+                    return true;
+                return true;
+            },
+            function mouseClicked(e) { 
+                console.log(e.source.getValue()); 
+                var v = e.source.getValue();
+                v = parseFloat(v);
+                self.m_CurKnot = e.source;  
+            }
+        ];
         for(var i = 0; i < 50;i++){
-            tf = new TextField(new zebra.data.SingleLineTxt("0", 5),[
-                function keyTyped(e) { 
-                    this.$super(e);
-                    if(e.code < 49 || e.code > 57){
-                        return;
-                    }
-                }
-            ]);
-            tf.setPreferredSize(100, -1);
+            var tf = new TextField(new zebra.data.SingleLineTxt("0", 5), callback);
+            tf.setPreferredSize(-1, -1);
             tf.id = "knot"+i;
             var label = new BoldLabel("knot"+i);
+            label.setPreferredSize(-1, -1);
+            label.id = "knot_label"+i;
             p.add(ctr, label);
             label.setVisible(false); 
             p.add(ctr, tf); 
-            tf.setVisible(false); 
+            tf.setVisible(false);      
         }
+        var btn = new Button("+0.1");
+        p.add(ctr, btn);
+        btn.bind(function() {
+            var knotObj = self.m_CurKnot;
+            if(knotObj){
+                var v = parseFloat(knotObj.getValue());
+                v+=0.1;
+                knotObj.setValue(v.toFixed(2));
+                self.onKnotUpdated();
+            }
+        });
+        var btn = new Button("-0.1");
+        p.add(ctr, btn);
+        btn.bind(function() {
+            var knotObj = self.m_CurKnot;
+            if(knotObj){
+                var v = parseFloat(knotObj.getValue());
+                v-=0.1;
+                knotObj.setValue(v.toFixed(2));
+                self.onKnotUpdated();
+            }
+        });
         return pkg.createBorderPan("Knots", p);
+    },
+    function onKnotUpdated(){
+        var knots = [];
+        for(var i = 0; i < 50;i++){
+            var tf = g_Ctrl.find("//zebra.ui.TextField[@id='knot"+i+"']");
+            var v = tf.getValue();
+            knots.push(parseFloat(v));
+        }
+        g_DrawBoard.refreshSpline({
+            knots:knots,
+            updateknot: false});
     },
     function updateKnots(knots){
         for(var i = 0; i < knots.length;i++){
@@ -447,6 +482,8 @@ pkg.MyLayout = new Class(pkg.MyPan, [
             var tf = this.find("//zebra.ui.TextField[@id='knot"+i+"']");
             tf.setVisible(true);
             tf.setValue(val.toString());
+            var label = this.find("//zebra.ui.BoldLabel[@id='knot_label"+i+"']");
+            label.setVisible(true);
         }
     },
     function createParamPan2() {
