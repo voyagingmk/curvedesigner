@@ -186,6 +186,7 @@ function() {
     this.setLayout(new zebra.layout.StackLayout());
     this.height = 400;
     this.padding = 8;
+    this.id = 'DrawBoard';
     this.background = "white"; 
     this.add(CENTER, new pkg.MySimpleChart(function(x) { return -x*Math.sin(x); }, 0, 3.14/2, 0.01, "#33ddCC"));
         //new MySimpleChart(function(x) { return Math.sin(x); }, -3, 3, 0.01, "#11FF99"),
@@ -194,56 +195,62 @@ function() {
             margin:20,
         }));
     var self = this;
+    self.m_Points = [];
     this.add(CENTER, new Panel([
-
-            function mouseReleased(e){
-                if(!this.selected){
-                  self.insert(0, CENTER, new pkg.MySimplePoint(e.x,e.y, "#ff0000"));
-                }
-                
-                return true;
-
-            },
-            function mouseMoved(e) {
-                this.checkSelect(e);
-                return true;
-            },
-            function checkSelect(e){
-                for(var i=0; i<this.parent.kids.length-1; i++) {
-                    var kid = this.parent.kids[i];
-                        j   = kid.isInside(e.x, e.y);
-                    
-                    if (j >= 0) {
-                        kid.setHighlight(true);
-                        this.selected = kid;
-                        this.index = j;
-                        break;
-                    }
-                    else {
-                        this.selected = null;
-                        if (kid.highlight) kid.setHighlight(false);     
-                    }
-                }
-            },
-            function mouseDragStarted(e) {
-                this.checkSelect(e);
-                this.dx = e.x;
-                this.dy = e.y;
-            },
-
-            function mouseDragged(e) {
-                if (this.selected) {
-                    for (var i=0; i < this.selected.gx.length; i++) {
-                        this.selected.gx[i] += (e.x - this.dx); 
-                        this.selected.gy[i] += (e.y - this.dy); 
-                    }
-                    this.selected.repaint();
-                }
-                this.dx = e.x;
-                this.dy = e.y;
+        function mouseReleased(e){
+            if(!this.selected){
+                var pointObj = new pkg.MySimplePoint(e.x,e.y, "#ff0000");
+                self.insert(0, CENTER, pointObj);
+                self.m_Points.push(pointObj);
             }
+            return true;
+        },
+        function mouseMoved(e) {
+            this.checkSelect(e);
+            return true;
+        },
+        function checkSelect(e){
+            for(var i=0; i<this.parent.kids.length-1; i++) {
+                var kid = this.parent.kids[i];
+                    j   = kid.isInside(e.x, e.y);
+                
+                if (j >= 0) {
+                    kid.setHighlight(true);
+                    this.selected = kid;
+                    this.index = j;
+                    break;
+                }
+                else {
+                    this.selected = null;
+                    if (kid.highlight) kid.setHighlight(false);     
+                }
+            }
+        },
+        function mouseDragStarted(e) {
+            this.checkSelect(e);
+            this.dx = e.x;
+            this.dy = e.y;
+        },
 
-        ]));
+        function mouseDragged(e) {
+            if (this.selected) {
+                for (var i=0; i < this.selected.gx.length; i++) {
+                    this.selected.gx[i] += (e.x - this.dx); 
+                    this.selected.gy[i] += (e.y - this.dy); 
+                }
+                this.selected.repaint();
+            }
+            this.dx = e.x;
+            this.dy = e.y;
+        }
+    ]));
+},
+function cleanControlPoints(){
+    for(var i =0; i < this.m_Points.length;i++){
+        var p = this.m_Points[i];
+        this.remove(p);
+    }
+    this.m_Points = [];
 }]);
 
 pkg.MyLayout = new Class(pkg.MyPan, [
@@ -262,8 +269,11 @@ pkg.MyLayout = new Class(pkg.MyPan, [
     function borderLayoutPage() {
         var bl_p = new Panel(new BorderLayout(2,2));
         bl_p.setPadding(4);
-        bl_p.add(TOP, new Button("TOP"));
-
+        var btn = new Button("Clean Control Points");
+        bl_p.add(TOP, btn);
+        btn.bind(function() {
+            g_DrawRoot.find("//zebra.ui.Panel[@id='DrawBoard']").cleanControlPoints();
+        });
         bl_p.add(BOTTOM, new Button("BOTTOM"));
         bl_p.add(RIGHT, new Button("RIGHT"));
         bl_p.add(LEFT, new Button("LEFT"));
