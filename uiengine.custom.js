@@ -72,7 +72,6 @@ pkg.MySimplePoint = Class(Panel, [
 
     function paint(g) {        
         g.setColor(this.color);
-        console.log("this",this.px, this.py); 
         g.fillRect(this.px-this.pw*0.5, this.py-this.ph*0.5,this.pw,this.ph);
     }
 ]);
@@ -99,10 +98,8 @@ pkg.BSpline = Class(Panel, [
         var left = this.getLeft() + this.lineWidth, top = this.getTop() + this.lineWidth;
         this.gx = [ left ];
         this.gy = [ top ];
-       console.log("cpoints", this.cpoints);
         if(this.cpoints.length<3)
             return;
-        console.log(this.width, this.height);
         for(var t = this.t1, i = 1; t <= this.t2; t += this.dt, i++) {
             var point = bspline(t, this.order, this.cpoints);
            // console.log(point);
@@ -113,7 +110,7 @@ pkg.BSpline = Class(Panel, [
     },
 
     function isInside(x, y) {
-        for(var i = 0; i < this.gx.length; i++) {
+        for(var i = 1; i < this.gx.length; i++) {
             var rx = this.gx[i], ry = this.gy[i];
             if ((ry - y) * (ry - y) + (rx - x) * (rx - x) < 4 * this.lineWidth * this.lineWidth) {
                 return i;
@@ -129,12 +126,10 @@ pkg.BSpline = Class(Panel, [
     function paint(g) {
         if(this.cpoints.length < 3)
             return;
-        console.log("chart paint")
         g.beginPath();
         g.setColor(this.color);
         var prev = g.lineWidth;
         g.lineWidth = this.lineWidth;
-        //console.log(this.gx,this.gy);
         g.moveTo(this.gx[1], this.gy[1]);
         for(var i = 2; i < this.gx.length; i++) {
             g.lineTo(this.gx[i], this.gy[i]);
@@ -145,7 +140,7 @@ pkg.BSpline = Class(Panel, [
             g.lineWidth = this.lineWidth*3;
             g.beginPath();
             g.setColor("rgba(255,10,10, 0.3)");
-            g.moveTo(this.gx[0], this.gy[0]);
+            g.moveTo(this.gx[1], this.gy[1]);
             for(var i = 1; i < this.gx.length; i++) {
                 g.lineTo(this.gx[i], this.gy[i]);
             }
@@ -268,7 +263,6 @@ function() {
     this.padding = 8;
     this.id = 'DrawBoard';
     this.background = "white"; 
-    this.add(CENTER, new pkg.MySimpleChart(function(x) { return -x*Math.sin(x); }, 0, 3.14/2, 0.01, "#33ddCC"));
     this.add(CENTER, new pkg.BSpline([],3,0,1,0.01,"#33ddCC"));
         //new MySimpleChart(function(x) { return Math.sin(x); }, -3, 3, 0.01, "#11FF99"),
         //new MySimpleChart(function(x) { return Math.cos(x)*Math.sin(x) - 2 * Math.sin(x*x); }, -2, 3, 0.01, "#CCFF77"),
