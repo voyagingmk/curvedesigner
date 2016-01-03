@@ -284,14 +284,13 @@ function() {
                 var pointObj = new pkg.MySimplePoint(e.x,e.y, "#ff0000");
                 self.insert(0, CENTER, pointObj);
                 self.m_Points.push(pointObj);
-                pointObj.m_Idx = self.m_Points.length - 1;
                 self.refreshSpline();
             }
             else{
                 if(e.modifiers.ctrlKey){
-                    self.m_Points.splice(this.selected.m_Idx, 1);
-                    self.refreshSpline();
+                    self.m_Points.splice(self.m_Points.indexOf(this.selected), 1);
                     self.remove(this.selected);
+                    self.refreshSpline();
                 }else{
                     var px = this.selected.px, py = this.selected.py;
                     if(px && py){
